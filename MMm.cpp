@@ -5,16 +5,17 @@
 #include <math.h>
 #include "lcgrand.cpp"  /* Encabezado para el generador de numeros aleatorios */
 
-#define LIMITE_COLA 100  /* Capacidad maxima de la cola */
+#define LIMITE_COLA 100000  /* Capacidad maxima de la cola */
 #define OCUPADO      1  /* Indicador de Servidor Ocupado */
 #define LIBRE      0  /* Indicador de Servidor Libre */
-#define NUM_SERVERS   100 /* Numero de servidores */
+#define NUM_SERVERS   5 /* Numero de servidores */
 
 int   sig_tipo_evento, num_clientes_espera, num_esperas_requerido, num_eventos,
       num_entra_cola, sig_servidor_salida, estado_servidores[NUM_SERVERS];
 float area_num_entra_cola, area_estado_servidores[NUM_SERVERS], media_entre_llegadas, media_atencion,
       tiempo_simulacion, tiempo_llegada[LIMITE_COLA + 1], tiempo_salida[NUM_SERVERS],
-      tiempo_ultimo_evento, tiempo_sig_evento[3], total_de_esperas, area_estado_servidores_suma;
+      tiempo_ultimo_evento, tiempo_sig_evento[3], total_de_esperas, area_estado_servidores_suma,
+      area_hay_cola;
 FILE  *parametros, *resultados;
 
 void  inicializar(void);
@@ -284,11 +285,14 @@ void reportes(void)  /*5 Funcion generadora de reportes. */
             area_num_entra_cola / tiempo_simulacion);
     fprintf(resultados, "Uso de los servidores%15.3f\n\n",
             area_estado_servidores_suma / NUM_SERVERS);
-    fprintf(resultados, "Tiempo de terminacion de la simulacion%12.3f minutos", tiempo_simulacion);
+    fprintf(resultados, "Tiempo de terminacion de la simulacion%12.3f minutos\n\n", tiempo_simulacion);
+    fprintf(resultados, "Probabilidad de que haya cola:%12.6f\n\n",
+            area_hay_cola / tiempo_simulacion);
+    fprintf(resultados, "Complemento Probabilidad de que haya cola:%12.6f\n\n",
+            1-(area_hay_cola / tiempo_simulacion));
 
     printf( "Server 1%16.3f minutos\n\n", area_estado_servidores[0]);
     printf( "Server 2%16.3f minutos\n\n", area_estado_servidores[1]);
-    
 }
 
 
@@ -305,14 +309,14 @@ void actualizar_estad_prom_tiempo(void)  /*2 Actualiza los acumuladores de area 
 
     /* Actualiza el area bajo la funcion de numero_en_cola */
     area_num_entra_cola += num_entra_cola * time_since_last_event;
+    int hay_cola = num_entra_cola==0 ? 0 : 1;
+    area_hay_cola += hay_cola * time_since_last_event;
 
     /* Actualiza el area bajo la funcion indicadora de cada servidor ocupado*/
     for(i = 0; i < NUM_SERVERS; i++) {
         area_estado_servidores[i] += estado_servidores[i] * time_since_last_event;
         //printf( "Server %16.3i  : %16.3f \n\n", area_estado_servidores[0]);
     }
-
-    /* Erlang C? */
 }
 
 
