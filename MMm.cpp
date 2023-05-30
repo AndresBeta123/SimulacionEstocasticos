@@ -5,7 +5,7 @@
 #include <math.h>
 #include "lcgrand.cpp"  /* Encabezado para el generador de numeros aleatorios */
 
-#define LIMITE_COLA 100000  /* Capacidad maxima de la cola */
+#define LIMITE_COLA 1000000 /* Capacidad maxima de la cola */
 #define OCUPADO      1  /* Indicador de Servidor Ocupado */
 #define LIBRE      0  /* Indicador de Servidor Libre */
 #define NUM_SERVERS   5 /* Numero de servidores */
@@ -15,7 +15,8 @@ int   sig_tipo_evento, num_clientes_espera, num_esperas_requerido, num_eventos,
 float area_num_entra_cola, area_estado_servidores[NUM_SERVERS], media_entre_llegadas, media_atencion,
       tiempo_simulacion, tiempo_llegada[LIMITE_COLA + 1], tiempo_salida[NUM_SERVERS],
       tiempo_ultimo_evento, tiempo_sig_evento[3], total_de_esperas, area_estado_servidores_suma,
-      area_hay_cola;
+      area_hay_cola,area_no_hay_servers;
+bool  servidores_libres = true;
 FILE  *parametros, *resultados;
 
 void  inicializar(void);
@@ -64,6 +65,8 @@ int main(void)  /*6 Funcion Principal */
 
         controltiempo();
 
+        
+
         /* Actualiza los acumuladores estadisticos de tiempo promedio */
 
         actualizar_estad_prom_tiempo();
@@ -106,6 +109,7 @@ void inicializar(void)  /*1 Funcion de inicializacion. */
     sig_servidor_salida = 0;
     for(i = 0; i < NUM_SERVERS; i++) {
         estado_servidores[i] = LIBRE;
+        tiempo_salida[i] = 1.0e+29;
     }
 
     /* Inicializa los contadores estadisticos. */
@@ -170,7 +174,7 @@ void llegada(void)  /*3. Funcion de llegada */
 {
     int   i;
     float espera;
-    bool servidores_libres = false;
+    servidores_libres = false;
     int servidor_libre;
     
     /* Programa la siguiente llegada. */
@@ -220,7 +224,7 @@ void llegada(void)  /*3. Funcion de llegada */
         /* Programa una salida ( servicio terminado ) */
         tiempo_salida[servidor_libre] = tiempo_simulacion + expon(media_atencion);
         
-        //printf("\n salida  cliente# %d - %f",num_cliente_atendido, tiempo_simulacion);
+        //printf("\n salida cliente# %d - %f",num_cliente_atendido, tiempo_simulacion);
         //num_cliente_atendido++;
         
     }
@@ -235,6 +239,7 @@ void salida(int servidor_actual)  /*3 Funcion de Salida. */
     int   i;
     float espera;
 
+    
     /* Revisa si la cola esta vacia */
 
     if (num_entra_cola == 0) {
@@ -242,7 +247,7 @@ void salida(int servidor_actual)  /*3 Funcion de Salida. */
         /* La cola esta vacia, pasa el servidor a LIBRE y
         no considera el evento de salida */
         estado_servidores[servidor_actual] = LIBRE;
-
+        servidores_libres = true;
         tiempo_salida[servidor_actual] = 1.0e+30;
         tiempo_sig_evento[2] = 1.0e+30;
     }
@@ -286,10 +291,10 @@ void reportes(void)  /*5 Funcion generadora de reportes. */
     fprintf(resultados, "Uso de los servidores%15.3f\n\n",
             area_estado_servidores_suma / NUM_SERVERS);
     fprintf(resultados, "Tiempo de terminacion de la simulacion%12.3f minutos\n\n", tiempo_simulacion);
-    fprintf(resultados, "Probabilidad de que haya cola:%12.6f\n\n",
-            area_hay_cola / tiempo_simulacion);
-    fprintf(resultados, "Complemento Probabilidad de que haya cola:%12.6f\n\n",
-            1-(area_hay_cola / tiempo_simulacion));
+    // fprintf(resultados, "Probabilidad de que haya cola:%12.6f\n\n",
+    //         area_hay_cola / tiempo_simulacion);
+    fprintf(resultados, "Probabilidad de que los servidores estan ocupados:%12.6f\n\n",
+            area_no_hay_servers / tiempo_simulacion);
 
     printf( "Server 1%16.3f minutos\n\n", area_estado_servidores[0]);
     printf( "Server 2%16.3f minutos\n\n", area_estado_servidores[1]);
@@ -309,8 +314,10 @@ void actualizar_estad_prom_tiempo(void)  /*2 Actualiza los acumuladores de area 
 
     /* Actualiza el area bajo la funcion de numero_en_cola */
     area_num_entra_cola += num_entra_cola * time_since_last_event;
-    int hay_cola = num_entra_cola==0 ? 0 : 1;
-    area_hay_cola += hay_cola * time_since_last_event;
+    // int hay_cola = num_entra_cola==0 ? 0 : 1;
+    // area_hay_cola += hay_cola * time_since_last_event;
+    int hay_servers_libres =  servidores_libres == true ? 0 : 1; 
+    area_no_hay_servers += hay_servers_libres * time_since_last_event;
 
     /* Actualiza el area bajo la funcion indicadora de cada servidor ocupado*/
     for(i = 0; i < NUM_SERVERS; i++) {
