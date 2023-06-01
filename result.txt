@@ -14,4 +14,8 @@ Numero promedio en cola     1.577
 
 Uso del servidor          0.684
 
+Numero medio de clientes en el sistema          2.261
+
+Tiempo medio de clientes en el sistema         19.780
+
 Tiempo de terminacion de la simulacion    8736.288 minutos

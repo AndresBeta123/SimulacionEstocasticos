@@ -10,10 +10,10 @@
 #define LIBRE      0  /* Indicador de Servidor Libre */
 
 int   sig_tipo_evento, num_clientes_espera, num_esperas_requerido, num_eventos,
-      num_entra_cola, estado_servidor;
+      num_entra_cola, estado_servidor, num_medio_clientes_sistema, num_clientes_total;
 float area_num_entra_cola, area_estado_servidor, media_entre_llegadas, media_atencion,
       tiempo_simulacion, tiempo_llegada[LIMITE_COLA + 1], tiempo_ultimo_evento, tiempo_sig_evento[3],
-      total_de_esperas;
+      total_de_esperas, area_num_medio_clientes_sistema, tiempo_total_clientes_sistema;
 FILE  *parametros, *resultados;
 
 void  inicializar(void);
@@ -107,6 +107,11 @@ void inicializar(void)  /*1 Funcion de inicializacion. */
     total_de_esperas    = 0.0;
     area_num_entra_cola      = 0.0;
     area_estado_servidor = 0.0;
+    num_medio_clientes_sistema = 0;
+    area_num_medio_clientes_sistema = 0.0;
+    tiempo_total_clientes_sistema = 0.0;
+    num_clientes_total = 0;
+    
 
     /* Inicializa la lista de eventos. Ya que no hay clientes, el evento salida
        (terminacion del servicio) no se tiene en cuenta */
@@ -154,6 +159,8 @@ void llegada(void)  /*3 Funcion de llegada */
     
     
     /* Programa la siguiente llegada. */
+    num_medio_clientes_sistema++;
+    num_clientes_total++;
     tiempo_sig_evento[1] = tiempo_simulacion + expon(media_entre_llegadas);
      //printf("\n llegada  cliente# %d - %f",num_cliente, tiempo_simulacion);
      //num_cliente++;
@@ -197,6 +204,7 @@ void llegada(void)  /*3 Funcion de llegada */
         /* Programa una salida ( servicio terminado ). */     
         
         tiempo_sig_evento[2] = tiempo_simulacion + expon(media_atencion);
+        tiempo_total_clientes_sistema +=  (tiempo_sig_evento[2]- tiempo_simulacion);
         //printf("\n salida  cliente# %d - %f",num_cliente_atendido, tiempo_simulacion);
         //num_cliente_atendido++;
     }
@@ -208,6 +216,7 @@ void salida(void)  /*3 Funcion de Salida. */
     /* Programa la siguiente llegada. */
     int   i;
     float espera;
+    num_medio_clientes_sistema--;
 
     /* Revisa si la cola esta vacia */
 
@@ -234,6 +243,7 @@ void salida(void)  /*3 Funcion de Salida. */
         ++num_clientes_espera;
         
         tiempo_sig_evento[2] = tiempo_simulacion + expon(media_atencion);
+        tiempo_total_clientes_sistema += espera + (tiempo_sig_evento[2]- tiempo_simulacion); 
         /* Mueve cada cliente en la cola ( si los hay ) una posicion hacia adelante */
         for (i = 1; i <= num_entra_cola; ++i)
             tiempo_llegada[i] = tiempo_llegada[i + 1];
@@ -252,6 +262,10 @@ void reportes(void)  /*5 Funcion generadora de reportes. */
             area_num_entra_cola/tiempo_simulacion);
     fprintf(resultados, "Uso del servidor%15.3f\n\n",
             area_estado_servidor / tiempo_simulacion);
+    fprintf(resultados, "Numero medio de clientes en el sistema%15.3f\n\n",
+            area_num_medio_clientes_sistema / tiempo_simulacion);
+    fprintf(resultados, "Tiempo medio de clientes en el sistema%15.3f\n\n",
+            tiempo_total_clientes_sistema / num_clientes_total);
     fprintf(resultados, "Tiempo de terminacion de la simulacion%12.3f minutos", tiempo_simulacion);
     
 }
@@ -270,6 +284,10 @@ void actualizar_estad_prom_tiempo(void)  /*2 Actualiza los acumuladores de area 
     /* Actualiza el area bajo la funcion de numero_en_cola */
     area_num_entra_cola      += num_entra_cola * time_since_last_event;
 
+    area_num_medio_clientes_sistema += num_medio_clientes_sistema * time_since_last_event;
+
+    
+
     /*Actualiza el area bajo la funcion indicadora de servidor ocupado*/
     area_estado_servidor += estado_servidor * time_since_last_event;
 }
@@ -279,4 +297,3 @@ float expon(float media)  /*4 Funcion generadora de la exponencias */
 {
     return -media * log(lcgrand(1));
 }
-
